@@ -18,7 +18,8 @@
     { "path": "packages/core" },
     { "path": "packages/adapters" },
     { "path": "packages/monitoring" },
-    { "path": "packages/inference" }
+    { "path": "packages/inference" },
+    { "path": "packages/fix-generator" }
   ],
   "files": []
 }
