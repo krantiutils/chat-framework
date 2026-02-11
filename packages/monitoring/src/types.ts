@@ -1,0 +1,219 @@
+/**
+ * Supported messaging platforms.
+ * Tier classification per PRD:
+ * - A (Official API): TELEGRAM, DISCORD
+ * - B (Reverse-engineered): WHATSAPP
+ * - C (Browser Automation): INSTAGRAM, FACEBOOK
+ * - D (CLI/Library): SIGNAL
+ */
+export enum Platform {
+  TELEGRAM = "telegram",
+  DISCORD = "discord",
+  WHATSAPP = "whatsapp",
+  INSTAGRAM = "instagram",
+  FACEBOOK = "facebook",
+  SIGNAL = "signal",
+}
+
+/**
+ * Clock function signature — returns current time in ms.
+ * Injectable for deterministic testing.
+ */
+export type ClockFn = () => number;
+
+/**
+ * Outcome of an action recorded by the collector.
+ */
+export enum ActionOutcome {
+  SUCCESS = "success",
+  FAILURE = "failure",
+}
+
+/**
+ * Detection-related signals observed during an action.
+ */
+export interface DetectionSignals {
+  /** A CAPTCHA challenge was presented */
+  readonly captchaEncountered?: boolean;
+  /** The platform returned a rate-limit response */
+  readonly rateLimited?: boolean;
+  /** Other indicators of bot detection (e.g., account warning, unusual redirect) */
+  readonly suspectedDetection?: boolean;
+}
+
+/**
+ * Result of a single platform action, fed into the collector.
+ */
+export interface ActionResult {
+  /** Timestamp when the action completed (ms epoch) */
+  readonly timestamp: number;
+  /** Whether the action succeeded or failed */
+  readonly outcome: ActionOutcome;
+  /** Wall-clock latency of the action (ms) */
+  readonly latencyMs: number;
+  /** Error type identifier (e.g., "SELECTOR_NOT_FOUND", "TIMEOUT", "AUTH_ERROR") */
+  readonly errorType?: string;
+  /** Detection signals observed during this action */
+  readonly detection?: DetectionSignals;
+}
+
+/**
+ * Per-platform health metrics snapshot.
+ * Matches PRD section 5.2 HealthMetrics interface.
+ */
+export interface HealthMetrics {
+  readonly platform: Platform;
+  readonly timestamp: Date;
+
+  // Availability
+  readonly connected: boolean;
+  readonly lastSuccessfulAction: Date | null;
+
+  // Performance
+  readonly avgLatencyMs: number;
+  readonly p99LatencyMs: number;
+
+  // Reliability
+  readonly successRate: number; // 0-1
+  readonly errorRate: number; // 0-1
+  readonly errorTypes: ReadonlyMap<string, number>;
+
+  // Detection
+  readonly suspectedDetection: boolean;
+  readonly captchaEncountered: boolean;
+  readonly rateLimited: boolean;
+
+  // Window metadata
+  readonly sampleCount: number;
+}
+
+/**
+ * Configuration for a PlatformMetricsCollector.
+ */
+export interface CollectorConfig {
+  /** Platform this collector tracks */
+  readonly platform: Platform;
+  /**
+   * Sliding window size in milliseconds. Actions older than this
+   * are evicted from the window. Defaults to 300_000 (5 minutes).
+   */
+  readonly windowMs?: number;
+  /**
+   * Maximum number of action results to retain in the window.
+   * Prevents unbounded memory growth under high throughput.
+   * Defaults to 10_000.
+   */
+  readonly maxWindowSize?: number;
+  /** Injectable clock for deterministic testing. Defaults to Date.now. */
+  readonly clock?: ClockFn;
+  /**
+   * Threshold in ms: if no successful action within this period,
+   * the platform is considered disconnected. Defaults to 60_000 (1 minute).
+   */
+  readonly disconnectThresholdMs?: number;
+}
+
+/** Listener callback for health metric snapshots. */
+export type HealthListener = (metrics: HealthMetrics) => void;
+
+/**
+ * Configuration for the HealthMonitor.
+ */
+export interface MonitorConfig {
+  /** Injectable clock for deterministic testing. Defaults to Date.now. */
+  readonly clock?: ClockFn;
+  /**
+   * Default collector config applied to all platforms.
+   * Per-platform overrides take precedence.
+   */
+  readonly defaultCollectorConfig?: Omit<CollectorConfig, "platform">;
+  /** Per-platform collector config overrides. */
+  readonly platformConfigs?: Partial<Record<Platform, Omit<CollectorConfig, "platform">>>;
+}
+
+/**
+ * Severity levels for alerts, ordered by urgency.
+ */
+export enum AlertSeverity {
+  INFO = "info",
+  WARNING = "warning",
+  CRITICAL = "critical",
+}
+
+/**
+ * Condition that triggers an alert, evaluated against HealthMetrics.
+ */
+export interface AlertCondition {
+  /**
+   * Metric field to evaluate. Must be a numeric or boolean field on HealthMetrics.
+   */
+  readonly metric: "errorRate" | "successRate" | "avgLatencyMs" | "p99LatencyMs" | "suspectedDetection" | "captchaEncountered" | "rateLimited" | "connected";
+  /**
+   * Comparison operator.
+   * For boolean metrics, use "eq" with threshold 1 (true) or 0 (false).
+   */
+  readonly operator: "gt" | "gte" | "lt" | "lte" | "eq";
+  /** Threshold value. For booleans: 1 = true, 0 = false. */
+  readonly threshold: number;
+}
+
+/**
+ * Rule defining when an alert fires and resolves.
+ */
+export interface AlertRule {
+  /** Unique identifier for this rule */
+  readonly id: string;
+  /** Human-readable name */
+  readonly name: string;
+  /** Severity of alerts generated by this rule */
+  readonly severity: AlertSeverity;
+  /** Platforms this rule applies to. Empty array = all platforms. */
+  readonly platforms: Platform[];
+  /** Conditions that must ALL be true to trigger the alert (AND logic) */
+  readonly conditions: AlertCondition[];
+  /**
+   * Optional separate conditions for resolving the alert.
+   * If omitted, the alert resolves when the trigger conditions are no longer met.
+   */
+  readonly resolveConditions?: AlertCondition[];
+  /**
+   * Minimum time (ms) between repeated firings of this rule for the same platform.
+   * Prevents alert storms. Defaults to 300_000 (5 minutes).
+   */
+  readonly cooldownMs?: number;
+}
+
+/**
+ * State of an alert: either firing or resolved.
+ */
+export enum AlertState {
+  FIRING = "firing",
+  RESOLVED = "resolved",
+}
+
+/**
+ * An alert event emitted when an alert fires or resolves.
+ */
+export interface AlertEvent {
+  readonly ruleId: string;
+  readonly ruleName: string;
+  readonly severity: AlertSeverity;
+  readonly platform: Platform;
+  readonly state: AlertState;
+  readonly timestamp: number;
+  /** The metrics snapshot that triggered/resolved this alert */
+  readonly metrics: HealthMetrics;
+}
+
+/** Callback for alert events. */
+export type AlertListener = (event: AlertEvent) => void;
+
+/**
+ * Configuration for the AlertManager.
+ */
+export interface AlertManagerConfig {
+  /** Alert rules to evaluate */
+  readonly rules: AlertRule[];
+  /** Injectable clock for deterministic testing. Defaults to Date.now. */
+  readonly clock?: ClockFn;
+}

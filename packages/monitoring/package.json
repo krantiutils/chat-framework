@@ -1,0 +1,21 @@
+{
+  "name": "@chat-framework/monitoring",
+  "version": "0.0.1",
+  "description": "Health monitoring with per-platform metrics collection, error rate tracking, and alerting",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsc -b tsconfig.build.json",
+    "clean": "rm -rf dist *.tsbuildinfo"
+  }
+}
