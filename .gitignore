@@ -27,3 +27,17 @@ Thumbs.db
 
 # Coverage
 coverage/
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+build/
+.eggs/
+
+# Training artifacts
+checkpoints/
+runs/
+*.pt
+*.onnx
+generated_trajectory.png
