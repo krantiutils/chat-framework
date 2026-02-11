@@ -1,0 +1,19 @@
+.runtime/
+.claude/
+.beads/
+.logs/
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+dist/
+build/
+.eggs/
+
+# Training artifacts
+checkpoints/
+runs/
+*.pt
+*.onnx
+generated_trajectory.png
