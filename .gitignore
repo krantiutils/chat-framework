@@ -43,3 +43,6 @@ runs/
 *.pt
 *.onnx
 generated_trajectory.png
+
+# Downloaded datasets
+data/
