@@ -18,7 +18,8 @@ class GeneratorWrapper(torch.nn.Module):
 
     ONNX does not support dynamic control flow (early stopping), so this wrapper
     runs the full max_generation_steps and returns all outputs. The caller must
-    trim based on the returned lengths.
+    post-process to determine where each trajectory reaches its target endpoint
+    (accumulate dx/dy from start, stop when within distance_threshold of end).
     """
 
     def __init__(self, generator: Generator):
@@ -41,7 +42,9 @@ class GeneratorWrapper(torch.nn.Module):
             z: (batch, latent_dim) noise vector.
 
         Returns:
-            outputs: (batch, max_generation_steps, 3) generated (dx, dy, dt).
+            sequences: (batch, max_generation_steps, 3) generated (dx, dy, dt).
+                The caller must trim valid steps by accumulating (dx, dy) from
+                the start position and checking distance to the end position.
         """
         sequences, _ = self.generator(start, end, z)
         return sequences
@@ -83,8 +86,8 @@ def export_onnx(
     wrapper.eval()
 
     batch_size = 1
-    dummy_start = torch.randn(batch_size, 2, device=torch_device)
-    dummy_end = torch.randn(batch_size, 2, device=torch_device)
+    dummy_start = torch.rand(batch_size, 2, device=torch_device)
+    dummy_end = torch.rand(batch_size, 2, device=torch_device)
     dummy_z = torch.randn(batch_size, config.latent_dim, device=torch_device)
 
     torch.onnx.export(
