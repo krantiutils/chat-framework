@@ -27,3 +27,7 @@ Thumbs.db
 
 # Coverage
 coverage/
+__pycache__/
+.venv/
+*.egg-info/
+.pytest_cache/
