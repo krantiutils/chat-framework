@@ -1,0 +1,7 @@
+.runtime/
+.claude/
+.beads/
+.logs/
+node_modules/
+dist/
+*.tsbuildinfo
