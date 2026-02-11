@@ -3,9 +3,9 @@ requires = ["setuptools>=68.0", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "mouse-trajectory-gan"
+name = "chat-framework-gan"
 version = "0.1.0"
-description = "WGAN-GP LSTM for generating realistic mouse trajectories"
+description = "WGAN-GP LSTM models for mouse trajectory and keystroke timing generation"
 readme = "README.md"
 license = {text = "MIT"}
 requires-python = ">=3.10"
@@ -23,9 +23,11 @@ dev = ["pytest>=7.0.0", "pytest-cov>=4.0.0"]
 [project.scripts]
 mouse-gan-train = "scripts.train:main"
 mouse-gan-generate = "scripts.generate:main"
+keyboard-gan-train = "scripts.train_keyboard:main"
+keyboard-gan-generate = "scripts.generate_keyboard:main"
 
 [tool.setuptools.packages.find]
-include = ["mouse_trajectory_gan*", "scripts*"]
+include = ["mouse_trajectory_gan*", "keyboard_dynamics_gan*", "scripts*"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
