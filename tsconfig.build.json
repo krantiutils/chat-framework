@@ -3,6 +3,7 @@
   "references": [
     { "path": "packages/core/tsconfig.build.json" },
     { "path": "packages/adapters/tsconfig.build.json" },
-    { "path": "packages/monitoring/tsconfig.build.json" }
+    { "path": "packages/monitoring/tsconfig.build.json" },
+    { "path": "packages/inference/tsconfig.build.json" }
   ]
 }
