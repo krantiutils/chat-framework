@@ -15,6 +15,54 @@ from mouse_trajectory_gan.models.generator import Generator
 from mouse_trajectory_gan.training.trainer import Trainer
 
 
+def download_kaggle_data(target_dir: str) -> str:
+    """Download Kaggle mouse movement datasets via kagglehub.
+
+    Downloads both:
+    - sameelarif/mouse-movement-between-ui-elements (raw JSON trajectories)
+    - prashantmudgal/mouse-movement (IOGraphica images)
+
+    Returns the target directory path.
+    """
+    import shutil
+    from pathlib import Path
+
+    import kagglehub
+
+    target = Path(target_dir)
+    target.mkdir(parents=True, exist_ok=True)
+
+    # Download raw trajectory data (JSON)
+    json_dest = target / "main.data.json"
+    if not json_dest.exists():
+        logging.info("Downloading sameelarif/mouse-movement-between-ui-elements...")
+        path = kagglehub.dataset_download("sameelarif/mouse-movement-between-ui-elements")
+        src = Path(path) / "main.data.json"
+        if src.exists():
+            shutil.copy2(src, json_dest)
+            logging.info("Saved raw trajectory JSON to %s", json_dest)
+        else:
+            raise FileNotFoundError(f"Expected main.data.json in {path}")
+    else:
+        logging.info("Raw trajectory JSON already exists at %s", json_dest)
+
+    # Download IOGraphica images
+    img_dir = target / "iographica"
+    if not img_dir.exists():
+        logging.info("Downloading prashantmudgal/mouse-movement...")
+        path = kagglehub.dataset_download("prashantmudgal/mouse-movement")
+        src = Path(path) / "Mouse Movement"
+        if src.exists():
+            shutil.copytree(src, img_dir)
+            logging.info("Saved IOGraphica images to %s", img_dir)
+        else:
+            raise FileNotFoundError(f"Expected 'Mouse Movement' directory in {path}")
+    else:
+        logging.info("IOGraphica images already exist at %s", img_dir)
+
+    return str(target)
+
+
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
         description="Train the WGAN-GP LSTM mouse trajectory generator"
@@ -23,8 +71,19 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--data_path",
         type=str,
-        required=True,
-        help="Path to training data directory or CSV file",
+        default=None,
+        help="Path to training data (directory, CSV, JSON, or PNG file)",
+    )
+    parser.add_argument(
+        "--download_kaggle",
+        action="store_true",
+        help="Download Kaggle mouse movement datasets before training",
+    )
+    parser.add_argument(
+        "--kaggle_data_dir",
+        type=str,
+        default="data/kaggle_mouse",
+        help="Directory for downloaded Kaggle data (default: data/kaggle_mouse)",
     )
     parser.add_argument("--epochs", type=int, default=1000)
     parser.add_argument("--batch_size", type=int, default=32)
@@ -45,6 +104,16 @@ def main() -> None:
     )
 
     args = parse_args()
+
+    if args.download_kaggle:
+        data_path = download_kaggle_data(args.kaggle_data_dir)
+        if args.data_path is None:
+            args.data_path = data_path
+        logging.info("Kaggle data available at: %s", data_path)
+
+    if args.data_path is None:
+        logging.error("No data path specified. Use --data_path or --download_kaggle")
+        sys.exit(1)
 
     if torch.cuda.is_available():
         device = torch.device("cuda")
