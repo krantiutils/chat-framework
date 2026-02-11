@@ -34,6 +34,8 @@ __pycache__/
 *.egg-info/
 build/
 .eggs/
+.venv/
+.pytest_cache/
 
 # Training artifacts
 checkpoints/
