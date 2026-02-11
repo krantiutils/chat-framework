@@ -16,7 +16,8 @@
   },
   "references": [
     { "path": "packages/core" },
-    { "path": "packages/adapters" }
+    { "path": "packages/adapters" },
+    { "path": "packages/fix-generator" }
   ],
   "files": []
 }
