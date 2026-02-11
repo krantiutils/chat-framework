@@ -27,6 +27,7 @@
   "pnpm": {
     "onlyBuiltDependencies": [
       "esbuild",
+      "onnxruntime-node",
       "puppeteer"
     ]
   }
