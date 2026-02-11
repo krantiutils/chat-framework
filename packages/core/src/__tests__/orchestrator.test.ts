@@ -320,6 +320,44 @@ describe("ActionOrchestrator", () => {
       );
       expect(totalX).toBe(200);
     });
+
+    it("handles negative scroll direction (scroll up)", async () => {
+      const { orchestrator, executor } = createTestOrchestrator();
+
+      await orchestrator.execute({
+        type: "scroll",
+        deltaY: -400,
+      });
+
+      const scrollCalls = executor.calls.filter((c) => c.method === "scroll");
+      const totalY = scrollCalls.reduce(
+        (sum, c) => sum + (c.args[1] as number),
+        0,
+      );
+      expect(totalY).toBe(-400);
+    });
+
+    it("handles diagonal scroll", async () => {
+      const { orchestrator, executor } = createTestOrchestrator();
+
+      await orchestrator.execute({
+        type: "scroll",
+        deltaX: 300,
+        deltaY: -200,
+      });
+
+      const scrollCalls = executor.calls.filter((c) => c.method === "scroll");
+      const totalX = scrollCalls.reduce(
+        (sum, c) => sum + (c.args[0] as number),
+        0,
+      );
+      const totalY = scrollCalls.reduce(
+        (sum, c) => sum + (c.args[1] as number),
+        0,
+      );
+      expect(totalX).toBe(300);
+      expect(totalY).toBe(-200);
+    });
   });
 
   describe("execute — hover", () => {
@@ -425,6 +463,64 @@ describe("ActionOrchestrator", () => {
       await expect(
         orchestrator.execute({ type: "hover", target: { x: 0, y: 0 } }),
       ).rejects.toThrow("execution aborted");
+    });
+
+    it("releases Shift key on abort during typing", async () => {
+      // Custom orchestrator that aborts after first keyDown
+      let callCount = 0;
+      const seq = [0.99]; // high = no typos
+      let seqIdx = 0;
+      const random = () => { const v = seq[seqIdx % seq.length]; seqIdx++; return v; };
+
+      let currentTime = 1_000_000;
+      const clock = () => currentTime;
+      const sleepCalls: number[] = [];
+      const sleep = async (ms: number) => { sleepCalls.push(ms); currentTime += ms; };
+
+      const stateMachine = new SessionStateMachine({
+        profile: DEFAULT_SESSION_PROFILE,
+        random,
+        clock,
+        getHour: () => 12,
+      });
+
+      const executor = createMockExecutor();
+      const origKeyDown = executor.keyDown.bind(executor);
+      executor.keyDown = async (key: string) => {
+        await origKeyDown(key);
+        callCount++;
+        // Abort after a few keyDown calls (after Shift is likely pressed)
+        if (callCount >= 3) {
+          orchestrator.abort();
+        }
+      };
+
+      const mouseProvider = new FallbackMouseProvider(random);
+      const keyboardProvider = new FallbackKeyboardProvider(random);
+
+      const orchestrator = new ActionOrchestrator({
+        stateMachine,
+        executor,
+        mouseProvider,
+        keyboardProvider,
+        random,
+        clock,
+        sleep,
+      });
+
+      // Type uppercase text that needs Shift
+      await expect(
+        orchestrator.execute({ type: "type", text: "ABC" }),
+      ).rejects.toThrow("execution aborted");
+
+      // Verify Shift was released: every keyDown("Shift") must have a matching keyUp("Shift")
+      const shiftDowns = executor.calls.filter(
+        (c) => c.method === "keyDown" && c.args[0] === "Shift",
+      ).length;
+      const shiftUps = executor.calls.filter(
+        (c) => c.method === "keyUp" && c.args[0] === "Shift",
+      ).length;
+      expect(shiftUps).toBeGreaterThanOrEqual(shiftDowns);
     });
 
     it("can be reset and reused", async () => {

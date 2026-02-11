@@ -204,14 +204,17 @@ export class FallbackKeyboardProvider implements KeystrokeTimingProvider {
       flight *= 2.0 + this._random() * 2.0; // 2x-4x
     }
 
-    // Fast digraphs: common pairs are faster
-    const digraph = (prevChar + nextChar).toLowerCase();
-    if (FAST_DIGRAPHS.has(digraph)) {
-      flight *= 0.6 + this._random() * 0.2; // 0.6x-0.8x
+    // Fast digraphs: common pairs are faster.
+    // Only check single-character pairs (skip modifiers like "Shift", "Backspace").
+    if (prevChar.length === 1 && nextChar.length === 1) {
+      const digraph = (prevChar + nextChar).toLowerCase();
+      if (FAST_DIGRAPHS.has(digraph)) {
+        flight *= 0.6 + this._random() * 0.2; // 0.6x-0.8x
+      }
     }
 
-    // Reach keys are slower
-    if (REACH_KEYS.has(nextChar.toLowerCase())) {
+    // Reach keys are slower (only applies to single characters)
+    if (nextChar.length === 1 && REACH_KEYS.has(nextChar.toLowerCase())) {
       flight *= 1.15 + this._random() * 0.15;
     }
 

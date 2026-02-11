@@ -231,46 +231,55 @@ export class ActionOrchestrator {
     // Generate keystroke timing
     const events = this._keyboardProvider.generate(request.text);
 
-    // Track shift state to properly handle held modifier
+    // Track shift state to properly handle held modifier.
+    // Wrapped in try/finally to ensure Shift is released even on abort.
     let shiftHeld = false;
 
-    for (const event of events) {
-      this._checkAborted();
+    try {
+      for (const event of events) {
+        this._checkAborted();
 
-      // Pre-delay (flight time)
-      if (event.preDelay > 0) {
-        await this._sleep(event.preDelay);
+        // Pre-delay (flight time)
+        if (event.preDelay > 0) {
+          await this._sleep(event.preDelay);
+        }
+
+        if (event.key === "Shift") {
+          // Shift down (will be released after the next real key)
+          if (!shiftHeld) {
+            await this._executor.keyDown("Shift");
+            shiftHeld = true;
+          }
+          continue;
+        }
+
+        // Key down
+        await this._executor.keyDown(event.key);
+
+        // Hold time
+        if (event.holdTime > 0) {
+          await this._sleep(event.holdTime);
+        }
+
+        // Key up
+        await this._executor.keyUp(event.key);
+
+        // Release shift if it was held for this character
+        if (shiftHeld) {
+          await this._sleep(sampleDelay({ min: 10, max: 30 }, this._random));
+          await this._executor.keyUp("Shift");
+          shiftHeld = false;
+        }
       }
-
-      if (event.key === "Shift") {
-        // Shift down (will be released after the next real key)
-        await this._executor.keyDown("Shift");
-        shiftHeld = true;
-        continue;
-      }
-
-      // Key down
-      await this._executor.keyDown(event.key);
-
-      // Hold time
-      if (event.holdTime > 0) {
-        await this._sleep(event.holdTime);
-      }
-
-      // Key up
-      await this._executor.keyUp(event.key);
-
-      // Release shift if it was held for this character
+    } finally {
+      // Ensure shift is released even if aborted or an error occurs
       if (shiftHeld) {
-        await this._sleep(sampleDelay({ min: 10, max: 30 }, this._random));
-        await this._executor.keyUp("Shift");
-        shiftHeld = false;
+        try {
+          await this._executor.keyUp("Shift");
+        } catch {
+          // Best effort — executor may be in a bad state after abort
+        }
       }
-    }
-
-    // Safety: release shift if still held
-    if (shiftHeld) {
-      await this._executor.keyUp("Shift");
     }
 
     // Return to browsing activity
@@ -298,7 +307,6 @@ export class ActionOrchestrator {
       this._checkAborted();
 
       // Calculate this increment's scroll amount
-      const remaining = numIncrements - i;
       let incrementX: number;
       let incrementY: number;
 
@@ -312,11 +320,14 @@ export class ActionOrchestrator {
         incrementX = Math.round(dirX * mag);
         incrementY = Math.round(dirY * mag);
 
-        // Don't overshoot
-        if (Math.abs(scrolledX + incrementX) > Math.abs(totalDeltaX)) {
+        // Don't overshoot: clamp so accumulated scroll stays within target
+        // Use sign-aware comparison to handle negative scroll directions
+        const projectedX = scrolledX + incrementX;
+        if (totalDeltaX >= 0 ? projectedX > totalDeltaX : projectedX < totalDeltaX) {
           incrementX = totalDeltaX - scrolledX;
         }
-        if (Math.abs(scrolledY + incrementY) > Math.abs(totalDeltaY)) {
+        const projectedY = scrolledY + incrementY;
+        if (totalDeltaY >= 0 ? projectedY > totalDeltaY : projectedY < totalDeltaY) {
           incrementY = totalDeltaY - scrolledY;
         }
       }
@@ -407,7 +418,11 @@ export class ActionOrchestrator {
         continue;
       }
 
-      // Unknown state — force to IDLE as safety net
+      // Unexpected state not in ACTIONABLE_STATES or AWAY — log and force to IDLE.
+      // This indicates a new state was added without updating ACTIONABLE_STATES.
+      console.warn(
+        `ActionOrchestrator: unexpected state "${snap.state}", forcing IDLE`,
+      );
       this._stateMachine.forceTransition(SessionState.IDLE);
       return;
     }
