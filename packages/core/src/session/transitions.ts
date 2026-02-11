@@ -209,17 +209,61 @@ export function normalizeRow(row: TransitionRow, selfState: SessionState): Trans
 }
 
 /**
- * Build a complete transition matrix for a given time period and user profile.
+ * Activity type multipliers. When TYPING, the user is more likely to stay
+ * in ACTIVE/READING/THINKING loops and less likely to go IDLE/AWAY.
+ * When WAITING, the user is more likely to scroll or go idle.
+ * BROWSING is the neutral baseline.
+ */
+const ACTIVITY_MODIFIERS: Record<ActivityType, Partial<Record<SessionState, Partial<Record<SessionState, number>>>>> = {
+  [ActivityType.BROWSING]: {
+    // Neutral — no modifiers
+  },
+  [ActivityType.TYPING]: {
+    // While typing: stay in the active→reading→thinking loop
+    [SessionState.ACTIVE]: {
+      [SessionState.READING]: 1.3,
+      [SessionState.IDLE]: 0.5,
+      [SessionState.AWAY]: 0.3,
+    },
+    [SessionState.READING]: {
+      [SessionState.THINKING]: 1.2,
+      [SessionState.IDLE]: 0.5,
+    },
+    [SessionState.THINKING]: {
+      [SessionState.ACTIVE]: 1.3,
+      [SessionState.IDLE]: 0.4,
+    },
+  },
+  [ActivityType.WAITING]: {
+    // While waiting: more likely to scroll, go idle, or go AFK
+    [SessionState.ACTIVE]: {
+      [SessionState.IDLE]: 1.5,
+      [SessionState.SCROLLING]: 1.5,
+      [SessionState.READING]: 0.7,
+    },
+    [SessionState.IDLE]: {
+      [SessionState.SCROLLING]: 1.4,
+      [SessionState.AWAY]: 1.5,
+      [SessionState.ACTIVE]: 0.6,
+    },
+  },
+};
+
+/**
+ * Build a complete transition matrix for a given time period, user profile,
+ * and current activity type.
  *
  * Steps:
  * 1. Start from BASE_MATRIX
  * 2. Apply time-of-day modifiers
- * 3. Apply profile biases
- * 4. Re-normalize each row
+ * 3. Apply activity type modifiers
+ * 4. Apply profile biases
+ * 5. Re-normalize each row
  */
 export function buildTransitionMatrix(
   timePeriod: TimePeriod,
   profile: SessionProfile,
+  activityType: ActivityType = ActivityType.BROWSING,
 ): TransitionMatrix {
   const matrix = {} as TransitionMatrix;
 
@@ -230,6 +274,17 @@ export function buildTransitionMatrix(
     const timeModsForState = TIME_MODIFIERS[timePeriod][fromState];
     if (timeModsForState) {
       for (const [targetStr, multiplier] of Object.entries(timeModsForState)) {
+        const target = targetStr as SessionState;
+        if (row[target] !== undefined && multiplier !== undefined) {
+          row[target] *= multiplier;
+        }
+      }
+    }
+
+    // Apply activity type modifiers
+    const activityModsForState = ACTIVITY_MODIFIERS[activityType][fromState];
+    if (activityModsForState) {
+      for (const [targetStr, multiplier] of Object.entries(activityModsForState)) {
         const target = targetStr as SessionState;
         if (row[target] !== undefined && multiplier !== undefined) {
           row[target] *= multiplier;

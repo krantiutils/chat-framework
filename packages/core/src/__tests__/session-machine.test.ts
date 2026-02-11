@@ -5,6 +5,7 @@ import {
   ActivityType,
   TimePeriod,
   DEFAULT_SESSION_PROFILE,
+  buildTransitionMatrix,
 } from "../session/index.js";
 
 /**
@@ -244,7 +245,7 @@ describe("SessionStateMachine", () => {
   });
 
   describe("time-of-day awareness", () => {
-    it("refreshes matrix when time period changes", () => {
+    it("refreshes time period on forceTransition", () => {
       let currentHour = 10; // PEAK
       const machine = new SessionStateMachine({
         profile: DEFAULT_SESSION_PROFILE,
@@ -258,9 +259,113 @@ describe("SessionStateMachine", () => {
       // Change to DORMANT
       currentHour = 3;
       machine.forceTransition(SessionState.IDLE);
-      // forceTransition doesn't check time period (it's done in _transition)
-      // But after a natural tick-based transition it would refresh.
-      // Let's verify by checking the matrix rebuilds on tick.
+      expect(machine.timePeriod).toBe(TimePeriod.DORMANT);
+    });
+  });
+
+  describe("activity type influence", () => {
+    it("TYPING activity reduces IDLE transitions from ACTIVE", () => {
+      const typingMatrix = buildTransitionMatrix(
+        TimePeriod.NORMAL,
+        DEFAULT_SESSION_PROFILE,
+        ActivityType.TYPING,
+      );
+      const browsingMatrix = buildTransitionMatrix(
+        TimePeriod.NORMAL,
+        DEFAULT_SESSION_PROFILE,
+        ActivityType.BROWSING,
+      );
+
+      // TYPING: ACTIVE->IDLE should be lower
+      expect(typingMatrix[SessionState.ACTIVE][SessionState.IDLE]).toBeLessThan(
+        browsingMatrix[SessionState.ACTIVE][SessionState.IDLE],
+      );
+
+      // TYPING: ACTIVE->READING should be higher
+      expect(typingMatrix[SessionState.ACTIVE][SessionState.READING]).toBeGreaterThan(
+        browsingMatrix[SessionState.ACTIVE][SessionState.READING],
+      );
+    });
+
+    it("setActivityType rebuilds the matrix", () => {
+      const machine = new SessionStateMachine({
+        random: () => 0.5,
+        clock: () => 0,
+        getHour: () => 12,
+      });
+
+      // Default is BROWSING
+      expect(machine.activityType).toBe(ActivityType.BROWSING);
+
+      // Change to TYPING — should update activity type
+      machine.setActivityType(ActivityType.TYPING);
+      expect(machine.activityType).toBe(ActivityType.TYPING);
+
+      // Setting same value again should be a no-op (no error)
+      machine.setActivityType(ActivityType.TYPING);
+      expect(machine.activityType).toBe(ActivityType.TYPING);
+    });
+  });
+
+  describe("listener robustness", () => {
+    it("continues notifying other listeners if one throws", () => {
+      const { machine } = createTestMachine();
+      const events: string[] = [];
+
+      machine.onTransition(() => events.push("first"));
+      machine.onTransition(() => {
+        throw new Error("boom");
+      });
+      machine.onTransition(() => events.push("third"));
+
+      // Suppress console.error during this test
+      const origError = console.error;
+      console.error = () => {};
+      try {
+        machine.forceTransition(SessionState.ACTIVE);
+      } finally {
+        console.error = origError;
+      }
+
+      expect(events).toEqual(["first", "third"]);
+    });
+
+    it("handles self-unsubscribe during iteration", () => {
+      const { machine } = createTestMachine();
+      const events: string[] = [];
+      const unsubRef: { fn?: () => void } = {};
+
+      unsubRef.fn = machine.onTransition(() => {
+        events.push("self-unsubscribing");
+        unsubRef.fn?.();
+      });
+      machine.onTransition(() => events.push("second"));
+
+      machine.forceTransition(SessionState.ACTIVE);
+
+      // Both should have been called (snapshot protects iteration)
+      expect(events).toEqual(["self-unsubscribing", "second"]);
+    });
+  });
+
+  describe("duration floor", () => {
+    it("never returns zero-duration", () => {
+      // Use random=0 (minimum base) and extreme profile to minimize duration
+      const machine = new SessionStateMachine({
+        random: () => 0,
+        clock: () => 0,
+        getHour: () => 12,
+        profile: {
+          ...DEFAULT_SESSION_PROFILE,
+          activityLevel: 1.0, // ACTIVE scale = 0.5
+        },
+        durationOverrides: {
+          [SessionState.ACTIVE]: { min: 1, max: 2 },
+        },
+      });
+
+      machine.forceTransition(SessionState.ACTIVE);
+      expect(machine.scheduledDuration).toBeGreaterThanOrEqual(50);
     });
   });
 

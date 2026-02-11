@@ -134,7 +134,11 @@ export class SessionStateMachine {
     this._state = SessionState.IDLE;
     this._enteredAt = now;
     this._currentTimePeriod = getTimePeriod(this._getHour(now));
-    this._currentMatrix = buildTransitionMatrix(this._currentTimePeriod, this._profile);
+    this._currentMatrix = buildTransitionMatrix(
+      this._currentTimePeriod,
+      this._profile,
+      this._activityType,
+    );
     this._scheduledDuration = this._sampleDuration(SessionState.IDLE);
   }
 
@@ -186,11 +190,17 @@ export class SessionStateMachine {
   }
 
   /**
-   * Set the current activity type. This affects transition probabilities
-   * on the next transition (not mid-state).
+   * Set the current activity type. Rebuilds the transition matrix immediately
+   * so the new activity influences the next transition.
    */
   setActivityType(type: ActivityType): void {
+    if (type === this._activityType) return;
     this._activityType = type;
+    this._currentMatrix = buildTransitionMatrix(
+      this._currentTimePeriod,
+      this._profile,
+      this._activityType,
+    );
   }
 
   /**
@@ -229,6 +239,7 @@ export class SessionStateMachine {
    */
   forceTransition(targetState: SessionState): StateSnapshot {
     const now = this._clock();
+    this._refreshTimePeriod(now);
     this._performTransition(targetState, now);
     return this.snapshot();
   }
@@ -249,16 +260,26 @@ export class SessionStateMachine {
   }
 
   /**
-   * Perform a probabilistic transition from the current state.
+   * Refresh the time period and rebuild the transition matrix if needed.
    */
-  private _transition(now: number): void {
-    // Refresh time period and matrix if the hour changed
+  private _refreshTimePeriod(now: number): void {
     const hour = this._getHour(now);
     const period = getTimePeriod(hour);
     if (period !== this._currentTimePeriod) {
       this._currentTimePeriod = period;
-      this._currentMatrix = buildTransitionMatrix(period, this._profile);
+      this._currentMatrix = buildTransitionMatrix(
+        period,
+        this._profile,
+        this._activityType,
+      );
     }
+  }
+
+  /**
+   * Perform a probabilistic transition from the current state.
+   */
+  private _transition(now: number): void {
+    this._refreshTimePeriod(now);
 
     const row = this._currentMatrix[this._state];
     const nextState = sampleTransition(row, this._random());
@@ -286,8 +307,16 @@ export class SessionStateMachine {
       activityType: this._activityType,
     };
 
-    for (const listener of this._listeners) {
-      listener(event);
+    // Snapshot the listener array to protect against mutation during iteration.
+    // Wrap each call in try/catch so one throwing listener doesn't block others.
+    const listeners = [...this._listeners];
+    for (const listener of listeners) {
+      try {
+        listener(event);
+      } catch (err) {
+        // Listeners must not throw, but if they do, log and continue.
+        console.error("SessionStateMachine: listener threw during transition", err);
+      }
     }
   }
 
@@ -333,6 +362,7 @@ export class SessionStateMachine {
         break;
     }
 
-    return Math.round(base * scale);
+    // Floor at 50ms to prevent zero-duration hot loops
+    return Math.max(50, Math.round(base * scale));
   }
 }
