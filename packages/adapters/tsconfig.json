@@ -6,8 +6,5 @@
     "noEmit": true,
     "lib": ["ES2022", "DOM"]
   },
-  "include": ["src"],
-  "references": [
-    { "path": "../core/tsconfig.build.json" }
-  ]
+  "include": ["src"]
 }
