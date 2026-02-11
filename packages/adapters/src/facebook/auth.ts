@@ -197,10 +197,27 @@ export class MessengerAuth {
       return { status: "success" };
     }
 
-    // Check for error indicators
-    const pageContent = await this._page.content();
-    if (pageContent.includes("incorrect") || pageContent.includes("wrong password")) {
-      return { status: "failed", reason: "Invalid credentials" };
+    // Check for error indicators using targeted selectors instead of
+    // full-page string matching (which is fragile and overly broad).
+    const hasError = await this._page.evaluate(() => {
+      // Facebook login errors appear in specific elements
+      const errorSelectors = [
+        '[data-testid="login_error"]',
+        '[role="alert"]',
+        '#error_box',
+        '.login_error_box',
+      ];
+      for (const sel of errorSelectors) {
+        const el = document.querySelector(sel);
+        if (el && el.textContent && el.textContent.trim().length > 0) {
+          return el.textContent.trim();
+        }
+      }
+      return null;
+    });
+
+    if (hasError) {
+      return { status: "failed", reason: `Login error: ${hasError}` };
     }
 
     return { status: "failed", reason: `Unexpected post-login state: ${postLoginUrl}` };

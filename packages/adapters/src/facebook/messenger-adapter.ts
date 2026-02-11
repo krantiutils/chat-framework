@@ -150,6 +150,7 @@ export class FacebookMessengerAdapter implements MessagingClient {
       );
 
       if (result.status === "two_factor_required") {
+        await this._cleanup();
         throw new Error(
           "FacebookMessengerAdapter: Two-factor authentication required. " +
             "Use submitTwoFactorCode() or provide a session directory with an " +
@@ -172,10 +173,11 @@ export class FacebookMessengerAdapter implements MessagingClient {
     // 6. Mark existing messages as seen (don't re-emit old messages)
     await this._domParser.markAllAsSeen();
 
-    // 7. Start message polling
-    this._startPolling();
-
+    // 7. Mark as connected BEFORE starting polling (poll callback checks _connected)
     this._connected = true;
+
+    // 8. Start message polling
+    this._startPolling();
   }
 
   async disconnect(): Promise<void> {
@@ -241,8 +243,8 @@ export class FacebookMessengerAdapter implements MessagingClient {
       maxMs: 800,
     });
 
-    // Press Enter to send
-    await page.keyboard.press("Enter");
+    // Press Enter to send (through executor for consistent input path)
+    await this._pressKey("Enter");
 
     // Wait for message to appear in the DOM
     await this._sleep(1000);
@@ -326,8 +328,8 @@ export class FacebookMessengerAdapter implements MessagingClient {
       }
     }
 
-    // Send
-    await page.keyboard.press("Enter");
+    // Send (through executor)
+    await this._pressKey("Enter");
     await this._sleep(1000);
 
     return {
@@ -377,7 +379,7 @@ export class FacebookMessengerAdapter implements MessagingClient {
     await (input as unknown as { uploadFile(path: string): Promise<void> }).uploadFile(file);
     await this._sleep(2000);
 
-    await page.keyboard.press("Enter");
+    await this._pressKey("Enter");
     await this._sleep(1000);
 
     return {
@@ -534,7 +536,7 @@ export class FacebookMessengerAdapter implements MessagingClient {
     // This is a common pattern for simulating "typing" without sending
     const dummyText = "...";
     for (const char of dummyText) {
-      await page.keyboard.press(char as KeyInput);
+      await this._pressKey(char);
       await this._sleep(100);
     }
 
@@ -543,7 +545,7 @@ export class FacebookMessengerAdapter implements MessagingClient {
 
     // Delete the dummy text
     for (let i = 0; i < dummyText.length; i++) {
-      await page.keyboard.press("Backspace" as KeyInput);
+      await this._pressKey("Backspace");
       await this._sleep(50);
     }
   }
@@ -702,30 +704,56 @@ export class FacebookMessengerAdapter implements MessagingClient {
 
   private async _extractSelfUser(page: Page): Promise<User> {
     // Try to extract the logged-in user's info from the page
-    const userName = await page.evaluate(() => {
+    const userInfo = await page.evaluate(() => {
       // Facebook stores user info in various places. Try common patterns:
-      // 1. Profile link in navigation
+      // 1. Profile link with user ID in href
       const profileLink = document.querySelector(
         'a[href*="/me"], a[aria-label*="Profile"]',
       );
       if (profileLink) {
-        return profileLink.textContent?.trim() ?? null;
+        const href = profileLink.getAttribute("href") ?? "";
+        // Extract numeric FB user ID from profile URL if present
+        const idMatch = href.match(/\/(\d+)\/?$/);
+        return {
+          name: profileLink.textContent?.trim() ?? null,
+          fbId: idMatch ? idMatch[1] : null,
+        };
       }
       // 2. Account settings area
       const accountEl = document.querySelector(
         '[data-testid="user-menu"], [aria-label="Account"]',
       );
       if (accountEl) {
-        return accountEl.textContent?.trim() ?? null;
+        return {
+          name: accountEl.textContent?.trim() ?? null,
+          fbId: null,
+        };
       }
-      return null;
+      return { name: null, fbId: null };
     });
 
+    // Use FB user ID if found, otherwise use a hash of the email (never expose raw email)
+    const userId = userInfo.fbId ?? `fb-user-${this._hashString(this._config.credentials.email)}`;
+    const displayName = userInfo.name ?? "Me";
+
     return {
-      id: this._config.credentials.email,
+      id: userId,
       platform: "facebook",
-      displayName: userName ?? this._config.credentials.email,
+      displayName,
     };
+  }
+
+  /**
+   * Simple string hash for generating opaque user IDs.
+   * Not cryptographic — just avoids exposing raw credentials.
+   */
+  private _hashString(input: string): string {
+    let hash = 0;
+    for (let i = 0; i < input.length; i++) {
+      const char = input.charCodeAt(i);
+      hash = ((hash << 5) - hash + char) | 0;
+    }
+    return Math.abs(hash).toString(36);
   }
 
   private _startPolling(): void {
@@ -828,6 +856,18 @@ export class FacebookMessengerAdapter implements MessagingClient {
       throw new Error("FacebookMessengerAdapter: self user not initialized");
     }
     return this._selfUser;
+  }
+
+  /**
+   * Press a single key through the PuppeteerActionExecutor with a realistic
+   * hold duration, keeping all input on the same path as the orchestrator.
+   */
+  private async _pressKey(key: string): Promise<void> {
+    const page = this._getPage();
+    await page.keyboard.down(key as KeyInput);
+    // Realistic hold time: 50-120ms
+    await this._sleep(50 + Math.random() * 70);
+    await page.keyboard.up(key as KeyInput);
   }
 
   private _sleep(ms: number): Promise<void> {
