@@ -3,6 +3,7 @@ import {
   SessionState,
   ALL_STATES,
   TimePeriod,
+  ActivityType,
   getTimePeriod,
   buildTransitionMatrix,
   normalizeRow,
@@ -136,6 +137,49 @@ describe("transitions", () => {
       expect(highAfk[SessionState.IDLE][SessionState.AWAY]).toBeGreaterThan(
         lowAfk[SessionState.IDLE][SessionState.AWAY],
       );
+    });
+
+    it("TYPING activity biases ACTIVE→READING higher than BROWSING", () => {
+      const typing = buildTransitionMatrix(
+        TimePeriod.NORMAL,
+        DEFAULT_SESSION_PROFILE,
+        ActivityType.TYPING,
+      );
+      const browsing = buildTransitionMatrix(
+        TimePeriod.NORMAL,
+        DEFAULT_SESSION_PROFILE,
+        ActivityType.BROWSING,
+      );
+      expect(typing[SessionState.ACTIVE][SessionState.READING]).toBeGreaterThan(
+        browsing[SessionState.ACTIVE][SessionState.READING],
+      );
+    });
+
+    it("WAITING activity biases IDLE→ACTIVE lower than BROWSING", () => {
+      const waiting = buildTransitionMatrix(
+        TimePeriod.NORMAL,
+        DEFAULT_SESSION_PROFILE,
+        ActivityType.WAITING,
+      );
+      const browsing = buildTransitionMatrix(
+        TimePeriod.NORMAL,
+        DEFAULT_SESSION_PROFILE,
+        ActivityType.BROWSING,
+      );
+      expect(waiting[SessionState.IDLE][SessionState.ACTIVE]).toBeLessThan(
+        browsing[SessionState.IDLE][SessionState.ACTIVE],
+      );
+    });
+
+    it("activity type produces valid stochastic matrix", () => {
+      for (const activity of Object.values(ActivityType)) {
+        const matrix = buildTransitionMatrix(TimePeriod.NORMAL, DEFAULT_SESSION_PROFILE, activity);
+        for (const fromState of ALL_STATES) {
+          const row = matrix[fromState];
+          const sum = ALL_STATES.reduce((s, st) => s + row[st], 0);
+          expect(sum).toBeCloseTo(1.0, 6);
+        }
+      }
     });
   });
 
