@@ -29,9 +29,15 @@ importers:
 
   packages/adapters:
     dependencies:
+      '@chat-framework/browser':
+        specifier: workspace:*
+        version: link:../browser
       '@chat-framework/core':
         specifier: workspace:*
         version: link:../core
+      puppeteer:
+        specifier: ^24.0.0
+        version: 24.37.2(typescript@5.9.3)
 
   packages/browser:
     dependencies:
