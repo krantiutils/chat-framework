@@ -172,6 +172,32 @@ describe("MessengerDomParser", () => {
 
       expect(messages[0].timestamp).toEqual(new Date("2026-02-11T15:30:00Z"));
     });
+
+    it("falls back to current time for unparseable timestamps", async () => {
+      const before = Date.now();
+      const rawMessages = [
+        {
+          elementId: "msg-0-bad-ts",
+          text: "Bad timestamp message",
+          timestampRaw: "2 hours ago",
+          isOwnMessage: false,
+          imageUrls: [],
+        },
+      ];
+
+      const page = createMockPage(rawMessages);
+      const parser = new MessengerDomParser(page, DEFAULT_SELECTORS);
+
+      const messages = await parser.parseVisibleMessages(
+        TEST_CONVERSATION,
+        SELF_USER,
+      );
+
+      const after = Date.now();
+      // Should fall back to current time rather than producing Invalid Date
+      expect(messages[0].timestamp.getTime()).toBeGreaterThanOrEqual(before);
+      expect(messages[0].timestamp.getTime()).toBeLessThanOrEqual(after);
+    });
   });
 
   describe("parseNewMessages (incremental)", () => {

@@ -168,9 +168,14 @@ export class MessengerDomParser {
               ? senderEl.textContent?.trim() || undefined
               : undefined;
 
-          // Generate element ID from index + content
-          const contentHash = (text ?? "") + images.join(",");
-          const elementId = `msg-${index}-${contentHash.length}-${contentHash.slice(0, 20)}`;
+          // Generate content-anchored element ID (no position index — DOM reflows
+          // would invalidate position-based IDs and break deduplication).
+          const raw = (senderName ?? "") + "|" + (text ?? "") + "|" + images.join(",");
+          let hash = 0;
+          for (let ci = 0; ci < raw.length; ci++) {
+            hash = ((hash << 5) - hash + raw.charCodeAt(ci)) | 0;
+          }
+          const elementId = `msg-${Math.abs(hash).toString(36)}-${raw.length}`;
 
           if (text || images.length > 0) {
             output.push({
@@ -216,9 +221,15 @@ export class MessengerDomParser {
       content = { type: "text", text: raw.text ?? "" };
     }
 
-    const timestamp = raw.timestampRaw
-      ? new Date(raw.timestampRaw)
-      : new Date();
+    // Parse timestamp, falling back to now if the raw string doesn't produce
+    // a valid Date (e.g. relative strings like "2 hours ago").
+    let timestamp: Date;
+    if (raw.timestampRaw) {
+      const parsed = new Date(raw.timestampRaw);
+      timestamp = Number.isNaN(parsed.getTime()) ? new Date() : parsed;
+    } else {
+      timestamp = new Date();
+    }
 
     return {
       id: raw.elementId,
