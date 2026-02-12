@@ -8,6 +8,7 @@ export * from "./messaging/index.js";
 export * from "./capabilities/index.js";
 export * from "./registry/index.js";
 export * from "./events/index.js";
+export * from "./simulation/index.js";
 
 // Additional types from Instagram adapter (unique exports only)
 export type { MessagingEvents } from "./types.js";
