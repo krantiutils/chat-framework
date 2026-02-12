@@ -5,6 +5,7 @@
     { "path": "packages/adapters/tsconfig.build.json" },
     { "path": "packages/monitoring/tsconfig.build.json" },
     { "path": "packages/inference/tsconfig.build.json" },
-    { "path": "packages/fix-generator/tsconfig.build.json" }
+    { "path": "packages/fix-generator/tsconfig.build.json" },
+    { "path": "packages/test-utils/tsconfig.build.json" }
   ]
 }

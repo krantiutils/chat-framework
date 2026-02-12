@@ -260,7 +260,7 @@ describe("PlatformMetricsCollector", () => {
   });
 
   it("reset clears all state", () => {
-    let now = 1000;
+    const now = 1000;
     const collector = new PlatformMetricsCollector({
       platform: Platform.TELEGRAM,
       clock: () => now,
@@ -276,7 +276,7 @@ describe("PlatformMetricsCollector", () => {
   });
 
   it("p99 latency with few samples", () => {
-    let now = 1000;
+    const now = 1000;
     const collector = new PlatformMetricsCollector({
       platform: Platform.DISCORD,
       clock: () => now,

@@ -72,7 +72,7 @@ describe("HealthMonitor", () => {
   });
 
   it("snapshotAll returns metrics for all registered platforms", () => {
-    let now = 1000;
+    const now = 1000;
     const monitor = new HealthMonitor({ clock: () => now });
 
     monitor.record(Platform.TELEGRAM, makeResult({ timestamp: now, latencyMs: 50 }));
@@ -87,7 +87,7 @@ describe("HealthMonitor", () => {
   });
 
   it("snapshotAll notifies listeners for each platform", () => {
-    let now = 1000;
+    const now = 1000;
     const monitor = new HealthMonitor({ clock: () => now });
 
     monitor.record(Platform.TELEGRAM, makeResult({ timestamp: now, latencyMs: 50 }));
@@ -104,7 +104,7 @@ describe("HealthMonitor", () => {
   });
 
   it("onHealth unsubscribe works", () => {
-    let now = 1000;
+    const now = 1000;
     const monitor = new HealthMonitor({ clock: () => now });
 
     monitor.record(Platform.TELEGRAM, makeResult({ timestamp: now, latencyMs: 50 }));
@@ -121,7 +121,7 @@ describe("HealthMonitor", () => {
   });
 
   it("handles listener exceptions gracefully", () => {
-    let now = 1000;
+    const now = 1000;
     const monitor = new HealthMonitor({ clock: () => now });
     monitor.record(Platform.TELEGRAM, makeResult({ timestamp: now, latencyMs: 50 }));
 
@@ -139,7 +139,7 @@ describe("HealthMonitor", () => {
   });
 
   it("hasDetectionSignal returns true when any platform is detected", () => {
-    let now = 1000;
+    const now = 1000;
     const monitor = new HealthMonitor({ clock: () => now });
 
     monitor.record(Platform.TELEGRAM, makeResult({ timestamp: now, latencyMs: 50 }));
@@ -173,7 +173,7 @@ describe("HealthMonitor", () => {
   });
 
   it("reset clears all collectors", () => {
-    let now = 1000;
+    const now = 1000;
     const monitor = new HealthMonitor({ clock: () => now });
 
     monitor.record(Platform.TELEGRAM, makeResult({ timestamp: now, latencyMs: 50 }));
@@ -185,7 +185,7 @@ describe("HealthMonitor", () => {
   });
 
   it("resetPlatform clears only one platform", () => {
-    let now = 1000;
+    const now = 1000;
     const monitor = new HealthMonitor({ clock: () => now });
 
     monitor.record(Platform.TELEGRAM, makeResult({ timestamp: now, latencyMs: 50 }));

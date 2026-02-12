@@ -1,6 +1,6 @@
 import { describe, it, expect, vi } from "vitest";
 import { AlertManager } from "../src/alerting.js";
-import { ActionOutcome, AlertSeverity, AlertState, Platform } from "../src/types.js";
+import { AlertSeverity, AlertState, Platform } from "../src/types.js";
 import type { AlertEvent, AlertRule, HealthMetrics } from "../src/types.js";
 
 /**
@@ -55,7 +55,7 @@ const DETECTION_RULE: AlertRule = {
 
 describe("AlertManager", () => {
   it("fires alert when conditions are met", () => {
-    let now = 1000;
+    const now = 1000;
     const alerter = new AlertManager({
       rules: [HIGH_ERROR_RATE_RULE],
       clock: () => now,
@@ -69,7 +69,7 @@ describe("AlertManager", () => {
   });
 
   it("does not fire when conditions are not met", () => {
-    let now = 1000;
+    const now = 1000;
     const alerter = new AlertManager({
       rules: [HIGH_ERROR_RATE_RULE],
       clock: () => now,
@@ -159,7 +159,7 @@ describe("AlertManager", () => {
   });
 
   it("only applies to specified platforms", () => {
-    let now = 1000;
+    const now = 1000;
     const alerter = new AlertManager({
       rules: [HIGH_LATENCY_RULE], // Only applies to INSTAGRAM
       clock: () => now,
@@ -182,7 +182,7 @@ describe("AlertManager", () => {
   });
 
   it("handles boolean metric conditions", () => {
-    let now = 1000;
+    const now = 1000;
     const alerter = new AlertManager({
       rules: [DETECTION_RULE],
       clock: () => now,
@@ -234,7 +234,7 @@ describe("AlertManager", () => {
   });
 
   it("notifies listeners on alert events", () => {
-    let now = 1000;
+    const now = 1000;
     const alerter = new AlertManager({
       rules: [HIGH_ERROR_RATE_RULE],
       clock: () => now,
@@ -268,7 +268,7 @@ describe("AlertManager", () => {
   });
 
   it("handles listener exceptions gracefully", () => {
-    let now = 1000;
+    const now = 1000;
     const alerter = new AlertManager({
       rules: [HIGH_ERROR_RATE_RULE],
       clock: () => now,
@@ -288,7 +288,7 @@ describe("AlertManager", () => {
   });
 
   it("getActiveAlerts returns currently firing alerts", () => {
-    let now = 1000;
+    const now = 1000;
     const alerter = new AlertManager({
       rules: [HIGH_ERROR_RATE_RULE, DETECTION_RULE],
       clock: () => now,
@@ -303,7 +303,7 @@ describe("AlertManager", () => {
   });
 
   it("manual resolve works", () => {
-    let now = 1000;
+    const now = 1000;
     const alerter = new AlertManager({
       rules: [HIGH_ERROR_RATE_RULE],
       clock: () => now,
@@ -317,7 +317,7 @@ describe("AlertManager", () => {
   });
 
   it("reset clears all alert state", () => {
-    let now = 1000;
+    const now = 1000;
     const alerter = new AlertManager({
       rules: [HIGH_ERROR_RATE_RULE],
       clock: () => now,
@@ -393,7 +393,7 @@ describe("AlertManager", () => {
   });
 
   it("includes metrics in alert event", () => {
-    let now = 1000;
+    const now = 1000;
     const alerter = new AlertManager({
       rules: [HIGH_ERROR_RATE_RULE],
       clock: () => now,

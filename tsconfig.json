@@ -19,7 +19,8 @@
     { "path": "packages/adapters" },
     { "path": "packages/monitoring" },
     { "path": "packages/inference" },
-    { "path": "packages/fix-generator" }
+    { "path": "packages/fix-generator" },
+    { "path": "packages/test-utils" }
   ],
   "files": []
 }

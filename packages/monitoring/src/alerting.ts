@@ -7,7 +7,7 @@ import type {
   ClockFn,
   HealthMetrics,
 } from "./types.js";
-import { AlertSeverity, AlertState, Platform } from "./types.js";
+import { AlertState, Platform } from "./types.js";
 
 const DEFAULT_COOLDOWN_MS = 300_000; // 5 minutes
 
