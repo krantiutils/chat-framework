@@ -5,3 +5,4 @@ export * from "./signal/index.js";
 export * from "./facebook/index.js";
 export * from "./instagram/index.js";
 export * from "./whatsapp/index.js";
+export * from "./telegram/index.js";
