@@ -17,7 +17,8 @@
   "references": [
     { "path": "packages/core" },
     { "path": "packages/adapters" },
-    { "path": "packages/monitoring" }
+    { "path": "packages/monitoring" },
+    { "path": "packages/test-utils" }
   ],
   "files": []
 }

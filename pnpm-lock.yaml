@@ -11,6 +11,9 @@ importers:
       '@eslint/js':
         specifier: ^9.39.2
         version: 9.39.2
+      '@types/node':
+        specifier: ^22.0.0
+        version: 22.19.11
       '@vitest/coverage-v8':
         specifier: ^4.0.18
         version: 4.0.18(vitest@4.0.18(@types/node@22.19.11))
@@ -58,6 +61,15 @@ importers:
   packages/core: {}
 
   packages/monitoring: {}
+
+  packages/test-utils:
+    dependencies:
+      '@chat-framework/core':
+        specifier: workspace:*
+        version: link:../core
+      vitest:
+        specifier: '>=4.0.0'
+        version: 4.0.18(@types/node@22.19.11)
 
 packages:
 

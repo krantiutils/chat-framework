@@ -153,7 +153,7 @@ export class FallbackMouseProvider implements MouseTrajectoryProvider {
   private _addOvershoot(
     points: TrajectoryPoint[],
     target: Point,
-    totalDuration: number,
+    _totalDuration: number,
   ): void {
     // Overshoot distance: 5-20px past the target
     const overshootDist = 5 + this._random() * 15;

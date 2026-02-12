@@ -28,8 +28,6 @@ import type {
   MessagingClient,
   MessagingClientEvents,
   MessagingEventName,
-  Reaction,
-  User,
 } from "@chat-framework/core";
 
 import {

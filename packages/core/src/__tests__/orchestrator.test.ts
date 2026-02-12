@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from "vitest";
+import { describe, it, expect } from "vitest";
 import {
   SessionStateMachine,
   SessionState,
@@ -10,7 +10,6 @@ import { FallbackMouseProvider } from "../orchestrator/fallback-mouse.js";
 import { FallbackKeyboardProvider } from "../orchestrator/fallback-keyboard.js";
 import type {
   ActionExecutor,
-  ActionRequest,
   Point,
   MouseButton,
 } from "../orchestrator/types.js";
@@ -213,7 +212,7 @@ describe("ActionOrchestrator", () => {
     });
 
     it("sets activity type to TYPING during text input", async () => {
-      const { orchestrator, stateMachine, executor } = createTestOrchestrator();
+      const { orchestrator, stateMachine } = createTestOrchestrator();
 
       // Track activity type changes
       const activityChanges: ActivityType[] = [];
