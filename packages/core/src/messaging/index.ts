@@ -1,14 +1,6 @@
+// Unique types from messaging module (types already exported from ../types/)
 export type {
-  Platform,
-  ConversationType,
   PresenceStatus,
-  User,
-  PlatformMetadata,
-  Conversation,
-  LinkPreview,
-  MessageContent,
-  Reaction,
-  Message,
 } from "./types.js";
 
 export type {
@@ -19,5 +11,4 @@ export type {
   PresenceListener,
   MessagingEventMap,
   MessagingEvent,
-  MessagingClient,
 } from "./client.js";

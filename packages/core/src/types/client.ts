@@ -41,23 +41,23 @@ export interface MessagingClient {
 
   sendImage(
     conversation: Conversation,
-    image: Buffer | string,
+    image: Uint8Array | string,
     caption?: string,
   ): Promise<Message>;
 
   sendAudio(
     conversation: Conversation,
-    audio: Buffer | string,
+    audio: Uint8Array | string,
   ): Promise<Message>;
 
   sendVoice(
     conversation: Conversation,
-    voice: Buffer | string,
+    voice: Uint8Array | string,
   ): Promise<Message>;
 
   sendFile(
     conversation: Conversation,
-    file: Buffer | string,
+    file: Uint8Array | string,
     filename: string,
   ): Promise<Message>;
 
