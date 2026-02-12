@@ -18,6 +18,11 @@
     "clean": "rm -rf dist *.tsbuildinfo"
   },
   "dependencies": {
-    "@chat-framework/core": "workspace:*"
+    "@chat-framework/core": "workspace:*",
+    "@hapi/boom": "^10.0.1",
+    "@whiskeysockets/baileys": "7.0.0-rc.9"
+  },
+  "devDependencies": {
+    "@types/hapi__boom": "^9.0.1"
   }
 }
