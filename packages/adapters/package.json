@@ -20,6 +20,7 @@
   "dependencies": {
     "@chat-framework/core": "workspace:*",
     "@chat-framework/browser": "workspace:*",
+    "@whiskeysockets/baileys": "7.0.0-rc.9",
     "puppeteer": "^24.0.0"
   }
 }
